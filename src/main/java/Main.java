@@ -9,10 +9,6 @@ import java.util.concurrent.Executors;
 
 public class Main {
     public static void main(String[] args) {
-//        ExecutorService es = Executors.newFixedThreadPool(64);
-//        //es.submit(new MyRunable());
-//        es.submit(new Server());
-//        es.shutdown();
         Server server = new Server();
         server.serverStart();
     }
