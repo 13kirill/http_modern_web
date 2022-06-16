@@ -11,24 +11,11 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class Server {
-
-
-
-//    private Socket socket;
-//
-//    public Server(Socket socket){
-//        this.socket = socket;
-//    }
-//
-//    public Server(){
-//
-//    }
+public class Server  {
 
     ExecutorService executorService = Executors.newFixedThreadPool(64);
 
     final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
-
 
     public void requestClassic(BufferedOutputStream out, Path filePath, String mimeType) throws IOException {
         final var template = Files.readString(filePath);
@@ -73,26 +60,36 @@ public class Server {
     public void serverStart(int port) {
 
         System.out.println("Server started");
+
         try (var serverSocket = new ServerSocket(port)) {
             while (true) {
-                try (final var socket = serverSocket.accept()) {
-                    //executorService.submit(listen(socket));
-                    listen(socket);
-                    System.out.println("New request completed");
-                }
+
+                final var socket = serverSocket.accept();
+                final var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                final var out = new BufferedOutputStream(socket.getOutputStream());
+
+                executorService.execute(() -> {
+                    try {
+                        listen(socket, in, out);
+                        if(socket.isClosed()) {
+                            executorService.shutdown();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+                System.out.println("New request completed");
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void listen (Socket socket) throws IOException {
-        final var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        final var out = new BufferedOutputStream(socket.getOutputStream());
-
+    public void listen(Socket socket, BufferedReader in, BufferedOutputStream out) throws IOException {
         // read only request line for simplicity
         // must be in form GET /path HTTP/1.1
         final var requestLine = in.readLine();
+        System.out.println("Результат работы потока " + Thread.currentThread().getName() + " : " + requestLine);
         final var parts = requestLine.split(" ");
 
         if (parts.length != 3) {
@@ -114,39 +111,4 @@ public class Server {
         }
         requestFile(out, filePath, mimeType);
     }
-
-//    @Override
-//    public void run() {
-//        try {
-//            final var in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//            final var out = new BufferedOutputStream(socket.getOutputStream());
-//
-//            // read only request line for simplicity
-//            // must be in form GET /path HTTP/1.1
-//            final var requestLine = in.readLine();
-//            final var parts = requestLine.split(" ");
-//
-//            if (parts.length != 3) {
-//                socket.close();
-//                // just close socket
-//            }
-//
-//            final var path = parts[1];
-//            if (!validPaths.contains(path)) {
-//                badRequest(out);
-//            }
-//
-//            final var filePath = Path.of(".", "public", path);
-//            final var mimeType = Files.probeContentType(filePath);
-//
-//            // special case for classic
-//            if (path.equals("/classic.html")) {
-//                requestClassic(out, filePath, mimeType);
-//            }
-//            requestFile(out, filePath, mimeType);
-//        } catch (IOException e){
-//            e.printStackTrace();
-//        }
-//
-//    }
 }
