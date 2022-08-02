@@ -1,18 +1,20 @@
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.message.BasicNameValuePair;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Request {
 
-    String method;
-    List<String> headers;
-    String body;
-    String path;
+    private String method;
+    private List<String> headers;
+    private String body;
+    private String path;
+    Server server;
 
     public Request(String method, List<String> headers, String body, String path) {
         this.method = method;
@@ -23,8 +25,6 @@ public class Request {
 
     public Request() {
     }
-
-    Server server;
 
     public Request returnRequest(BufferedInputStream in, BufferedOutputStream out) throws IOException {
 
@@ -57,7 +57,7 @@ public class Request {
         if (!path.startsWith("/")) {
             server.badRequest(out);
         }
-        //System.out.println(path);
+        System.out.println(path);
 
         // ищем заголовки
         final var headersDelimiter = new byte[]{'\r', '\n', '\r', '\n'};
@@ -94,41 +94,15 @@ public class Request {
         return new Request(method, headers, body, path);
     }
 
-    public void getQueryParams(BufferedInputStream in, BufferedOutputStream out) throws IOException {
-
-        URLEncodedUtils urlEncodedUtils = new URLEncodedUtils();
-        Request request = new Request();
-
-        String[] params = request.returnRequest(in, out).body.split("&");
-        String body = Arrays.toString(params);
-        String[] paramPair = null;
-        List<NameValuePair> nameValuePairs = new ArrayList<>();
-        System.out.println("Парсинг: " + urlEncodedUtils.parse(body, StandardCharsets.UTF_8));
-
-        for (int i = 0; i < params.length; i++) {
-            paramPair = params[i].split("=");
-            nameValuePairs.add(new BasicNameValuePair(paramPair[0], paramPair[1]));
-        }
-        System.out.println("nameValuePair: " + nameValuePairs);
+    public List<NameValuePair> getQueryParams() {
+        return URLEncodedUtils.parse(path, StandardCharsets.UTF_8);
     }
 
-    public void getQueryParam (BufferedInputStream in, BufferedOutputStream out, String name) throws IOException {
-
-        URLEncodedUtils urlEncodedUtils = new URLEncodedUtils();
-        Request request = new Request();
-
-        String[] params = request.returnRequest(in, out).body.split("&");
-        String body = Arrays.toString(params);
-        String[] paramPair = null;
-        System.out.println("Парсинг: " + urlEncodedUtils.parse(body, StandardCharsets.UTF_8));
-        List<NameValuePair> nameValuePairs = new ArrayList<>();
-
-        for (int i = 0; i < params.length; i++) {
-            paramPair = params[i].split("=");
-            nameValuePairs.add(new BasicNameValuePair(paramPair[0], paramPair[1]));
-        }
-        nameValuePairs.stream().filter(nameValuePair -> nameValuePair.getName().contains(name)).forEach(System.out::println);
-    }
+public List<NameValuePair> getQueryParam(String name) {
+        return getQueryParams().stream()
+                .filter(x -> x.getName().equals(name))
+                .collect(Collectors.toList());
+}
 
     public String toString() {
         return "метод: " + method + '\n' + "заголовки: " + headers + '\n' + "тело: " + body + '\n' + "путь: " + path;
